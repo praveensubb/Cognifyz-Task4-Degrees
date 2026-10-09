@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DialTemp - Temperature Converter</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        @property --h {
+            syntax: '<number>';
+            inherits: true;
+            initial-value: 215;
+        }
+
+        :root {
+            --bg-color: #F6F4F0;
+            --text-main: #23211E;
+            --text-muted: #7A756D;
+            --border: #E2DDD5;
+            --accent: hsl(var(--h) 70% 42%);
+            --error: #ef4444;
+            --shadow-light: #ffffff;
+            --shadow-dark: #d5d0c6;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            transition: --h 0.6s ease-out;
+        }
+
+        h1, h2, h3, .number-font {
+            font-family: 'Sora', sans-serif;
+        }
+
+        .main-container {
+            display: flex;
+            flex-direction: row;
+            gap: 60px;
+            max-width: 1000px;
+            width: 100%;
+            align-items: flex-start;
+            justify-content: center;
+        }
+
+        /* Dial Column */
+        .dial-column {
+            flex: 0 0 400px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .dial-wrapper {
+            width: 380px;
+            height: 380px;
+            border-radius: 50%;
+            background: var(--bg-color);
+            box-shadow: 
+                -15px -15px 30px var(--shadow-light),
+                15px 15px 30px var(--shadow-dark);
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            touch-action: none;
+            outline: none;
+        }
+        .dial-wrapper:focus-visible {
+            box-shadow: 
+                -15px -15px 30px var(--shadow-light),
+                15px 15px 30px var(--shadow-dark),
+                0 0 0 4px var(--bg-color),
+                0 0 0 8px var(--accent);
+        }
+
+        .dial-svg {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+        }
+
+        /* Center Sunken Area */
+        .dial-center {
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            background: var(--bg-color);
+            box-shadow: 
+                inset 8px 8px 16px var(--shadow-dark),
+                inset -8px -8px 16px var(--shadow-light);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .dial-value {
+            font-size: 4rem;
+            font-weight: 700;
+            line-height: 1;
+            color: var(--text-main);
+            letter-spacing: -1px;
+        }
+        
+        .dial-unit {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-left: 2px;
+        }
+
+        .dial-label {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--accent);
+            margin-top: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Knob */
+        .dial-knob {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            background: #ffffff;
+            border-radius: 50%;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            /* Positioned via JS */
+            z-index: 3;
+            pointer-events: auto;
+            cursor: grab;
+            transform: translate(-50%, -50%);
+        }
+        .dial-knob:active { cursor: grabbing; }
+
+        /* SVG Elements */
+        .track-path {
+            fill: none;
+            stroke: var(--border);
+            stroke-width: 16;
+            stroke-linecap: round;
+        }
+        .progress-path {
+            fill: none;
+            stroke: var(--accent);
+            stroke-width: 16;
+            stroke-linecap: round;
+        }
+        .tick-line { stroke: var(--text-muted); stroke-width: 2; }
+        .tick-text { fill: var(--text-muted); font-family: 'Sora', sans-serif; font-size: 14px; font-weight: 600; text-anchor: middle; dominant-baseline: middle; }
+
+        /* Controls Column */
+        .controls-column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            min-width: 300px;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            line-height: 1.1;
+        }
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-top: 4px;
+        }
+
+        /* Segmented Toggle */
+        .toggle-group {
+            display: flex;
+            background: #EBE6E0;
+            border-radius: 12px;
+            padding: 4px;
+            position: relative;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .toggle-btn {
+            flex: 1;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            padding: 10px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            z-index: 1;
+            transition: color 0.3s;
+            border-radius: 8px;
+        }
+        .toggle-btn.active { color: var(--text-main); }
+        .toggle-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+        
+        .toggle-slider {
+            position: absolute;
+            top: 4px; left: 4px;
+            width: calc(50% - 4px);
+            height: calc(100% - 8px);
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 0;
+        }
+        .toggle-group[data-dir="FtoC"] .toggle-slider { transform: translateX(100%); }
+
+        /* Exact Input */
+        .input-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .input-wrapper {
+            flex: 1;
+            display: flex;
+            background: #ffffff;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 8px 16px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+            transition: border-color 0.2s;
+            align-items: center;
+        }
+        .input-wrapper:focus-within { border-color: var(--accent); }
+        .exact-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--text-main);
+            outline: none;
+            width: 100%;
+        }
+        .exact-input::placeholder { color: #ccc; }
+        .exact-unit { font-size: 1.25rem; font-weight: 600; color: var(--text-muted); }
+        
+        .swap-btn {
+            background: #ffffff;
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            width: 48px; height: 48px;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: background 0.2s;
+        }
+        .swap-btn:hover { background: #f9f9f9; }
+        .swap-btn:focus-visible { outline: 2px solid var(--accent); }
+
+        .error-msg {
+            color: var(--error);
+            font-size: 0.85rem;
+            font-weight: 500;
+            min-height: 20px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .error-msg.visible { opacity: 1; }
+        .shake { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        /* Result Display */
+        .result-value-container {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+        }
+        .res-val { font-size: 4rem; font-weight: 800; line-height: 1; color: var(--accent); }
+        .res-unit { font-size: 1.5rem; font-weight: 700; color: var(--text-muted); }
+        
+        .result-fact {
+            margin-top: 8px;
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            font-style: italic;
+            min-height: 20px;
+        }
+
+        /* Chips */
+        .chips-container {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .chip {
+            background: var(--bg-color);
+            border: 1px solid var(--border);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            color: var(--text-main);
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.02);
+            transition: all 0.2s;
+        }
+        .chip:hover { border-color: var(--accent); }
+        .chip:focus-visible { outline: 2px solid var(--accent); }
+
+        /* Actions row */
+        .actions-row {
+            display: flex;
+            gap: 20px;
+        }
+        .text-btn {
+            background: none; border: none;
+            color: var(--text-muted); cursor: pointer;
+            font-size: 0.9rem; font-weight: 500; text-decoration: underline;
+        }
+        .text-btn:hover { color: var(--text-main); }
+        .text-btn:focus-visible { outline: 2px solid var(--accent); }
+
+        /* History */
+        .history-section {
+            background: #ffffff;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.02);
+        }
+        .history-header {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+        .history-list {
+            list-style: none;
+            display: flex; flex-direction: column; gap: 8px;
+        }
+        .history-item {
+            display: flex; justify-content: space-between;
+            padding: 10px 12px;
+            background: var(--bg-color);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .history-item:hover { background: #EBE6E0; }
+        .history-empty { text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 10px; }
+
+        /* Tests */
+        .tests-section {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+        }
+        .tests-header {
+            display: flex; justify-content: space-between; align-items: center;
+            cursor: pointer; font-weight: 600;
+        }
+        .run-tests-btn {
+            background: var(--text-main);
+            color: #fff;
+            border: none; padding: 6px 12px; border-radius: 6px;
+            font-weight: 600; cursor: pointer;
+        }
+        .tests-body { display: none; margin-top: 16px; overflow-x: auto; }
+        .tests-body.open { display: block; }
+        .tests-table {
+            width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left;
+        }
+        .tests-table th, .tests-table td { padding: 8px; border-bottom: 1px solid var(--border); }
+        .pass { color: #10b981; font-weight: 700; }
+        .fail { color: #ef4444; font-weight: 700; }
+        .tests-summary { margin-top: 12px; font-weight: 600; }
+
+        footer {
+            margin-top: 40px;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-align: center;
+            padding-bottom: 24px;
+        }
+
+        @media (max-width: 800px) {
+            .main-container { flex-direction: column; align-items: center; }
+            .dial-column { flex: 0 0 auto; margin-bottom: 20px; }
+            .controls-column { width: 100%; max-width: 500px; }
+        }
+
+        @media (max-width: 400px) {
+            .dial-wrapper { width: 300px; height: 300px; }
+            .dial-center { width: 170px; height: 170px; }
+            .dial-value { font-size: 3rem; }
+            .res-val { font-size: 3rem; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="main-container">
+        <!-- Left: Dial -->
+        <div class="dial-column">
+            <div class="dial-wrapper" id="dialWrapper" tabindex="0" role="slider" aria-label="Temperature slider" aria-valuemin="-50" aria-valuemax="150" aria-valuenow="0">
+                <svg class="dial-svg" viewBox="0 0 380 380" id="dialSvg">
+                    <path d="" id="dialBgArc" class="track-path"></path>
+                    <g id="dialTicks"></g>
+                    <path d="" id="dialProgressArc" class="progress-path"></path>
+                </svg>
+                <div class="dial-knob" id="dialKnob"></div>
+                <div class="dial-center">
+                    <div>
+                        <span class="dial-value number-font" id="dialValue">0</span>
+                        <span class="dial-unit" id="dialUnit">°C</span>
+                    </div>
+                    <div class="dial-label" id="dialLabel">Freezing</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Controls -->
+        <div class="controls-column">
+            <div>
+                <h1>DialTemp</h1>
+                <div class="subtitle">Smart temperature converter</div>
+            </div>
+
+            <div class="toggle-group" id="dirToggle" data-dir="CtoF">
+                <div class="toggle-slider"></div>
+                <button class="toggle-btn active" id="btnCtoF">Celsius to Fahrenheit</button>
+                <button class="toggle-btn" id="btnFtoC">Fahrenheit to Celsius</button>
+            </div>
+
+            <div>
+                <div class="input-row">
+                    <div class="input-wrapper">
+                        <input type="text" id="exactInput" class="exact-input number-font" placeholder="Enter value..." aria-label="Exact temperature input">
+                        <span class="exact-unit" id="exactUnit">°C</span>
+                    </div>
+                    <button class="swap-btn" id="swapBtn" aria-label="Swap direction">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16V4M7 4L3 8M7 4L11 8M17 8V20M17 20L21 16M17 20L13 16"/></svg>
+                    </button>
+                </div>
+                <div class="error-msg" id="errorMsg"></div>
+            </div>
+
+            <div>
+                <div class="result-value-container" aria-live="polite">
+                    <span class="res-val number-font" id="resVal">32</span>
+                    <span class="res-unit" id="resUnit">°F</span>
+                </div>
+                <div class="result-fact" id="resFact">Water freezes at 0 °C</div>
+            </div>
+
+            <div class="chips-container">
+                <button class="chip" data-val="-40">-40</button>
+                <button class="chip" data-val="0">0</button>
+                <button class="chip" data-val="37">37</button>
+                <button class="chip" data-val="100">100</button>
+            </div>
+
+            <div class="actions-row">
+                <button class="text-btn" id="copyBtn">Copy result</button>
+                <button class="text-btn" id="clearBtn">Clear history</button>
+            </div>
+
+            <div class="history-section">
+                <div class="history-header">Recent conversions</div>
+                <ul class="history-list" id="historyList">
+                    <li class="history-empty">No recent conversions</li>
+                </ul>
+            </div>
+
+            <div class="tests-section">
+                <div class="tests-header" id="testsToggle">
+                    <span>Test cases</span>
+                    <button class="run-tests-btn" id="runTestsBtn">Run tests</button>
+                </div>
+                <div class="tests-body" id="testsBody">
+                    <table class="tests-table">
+                        <thead><tr><th>Input</th><th>Dir</th><th>Expected</th><th>Got</th><th>Status</th></tr></thead>
+                        <tbody id="testsTableBody"></tbody>
+                    </table>
+                    <div class="tests-summary" id="testsSummary"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>Cognifyz Internship, Level 2, Task 4</footer>
+
+    <script>
+        // DOM Elements
+        const dialWrapper = document.getElementById('dialWrapper');
+        const dialBgArc = document.getElementById('dialBgArc');
+        const dialProgressArc = document.getElementById('dialProgressArc');
+        const dialKnob = document.getElementById('dialKnob');
+        const dialTicks = document.getElementById('dialTicks');
+        const dialValueEl = document.getElementById('dialValue');
+        const dialUnitEl = document.getElementById('dialUnit');
+        const dialLabelEl = document.getElementById('dialLabel');
+        
+        const dirToggle = document.getElementById('dirToggle');
+        const btnCtoF = document.getElementById('btnCtoF');
+        const btnFtoC = document.getElementById('btnFtoC');
+        
+        const exactInput = document.getElementById('exactInput');
+        const exactUnitEl = document.getElementById('exactUnit');
+        const swapBtn = document.getElementById('swapBtn');
+        const errorMsg = document.getElementById('errorMsg');
+        
+        const resValEl = document.getElementById('resVal');
+        const resUnitEl = document.getElementById('resUnit');
+        const copyBtn = document.getElementById('copyBtn');
+        const resFactEl = document.getElementById('resFact');
+        
+        const chips = document.querySelectorAll('.chip');
+        const historyList = document.getElementById('historyList');
+        const clearBtn = document.getElementById('clearBtn');
+
+        // Logic matched with Python
+        function validateTemperature(value, scale) {
+            let valStr = String(value).trim();
+            if (valStr === '') throw new Error("Input cannot be empty.");
+            if (valStr.toLowerCase().includes('e')) throw new Error("Scientific notation not allowed.");
+            
+            let num = Number(valStr);
+            if (isNaN(num) || !isFinite(num)) {
+                throw new Error("Invalid input: Please enter a numeric value.");
+            }
+            if (scale === 'C' && num < -273.15) {
+                throw new Error("Temperature cannot be below absolute zero (-273.15 C).");
+            }
+            if (scale === 'F' && num < -459.67) {
+                throw new Error("Temperature cannot be below absolute zero (-459.67 F).");
+            }
+            return num;
+        }
+
+        function celsiusToFahrenheit(c) {
+            let cVal = validateTemperature(c, 'C');
+            let f = cVal * 9 / 5 + 32;
+            let rounded = Math.round(f * 100) / 100;
+            return Object.is(rounded, -0) ? 0 : rounded;
+        }
+
+        function fahrenheitToCelsius(f) {
+            let fVal = validateTemperature(f, 'F');
+            let c = (fVal - 32) * 5 / 9;
+            let rounded = Math.round(c * 100) / 100;
+            return Object.is(rounded, -0) ? 0 : rounded;
+        }
+
+        // App State
+        let currentDir = 'CtoF';
+        let currentResultNum = null;
+        let history = [];
+        let historyTimeout = null;
+
+        // Dial config
+        const dialCenter = 190; // 380 / 2
+        const dialRadius = 150;
+        const startAngle = 135; 
+        const endAngle = 405;
+        const arcSweep = 270;
+        
+        const C_MIN = -50;
+        const C_MAX = 150;
+        const F_MIN = -58;
+        const F_MAX = 302;
+
+        function getMinMax() {
+            return currentDir === 'CtoF' ? {min: C_MIN, max: C_MAX} : {min: F_MIN, max: F_MAX};
+        }
+
+        function polarToCartesian(centerX, centerY, radius, angleInDegrees) {
+            var angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
+            return {
+                x: centerX + (radius * Math.cos(angleInRadians)),
+                y: centerY + (radius * Math.sin(angleInRadians))
+            };
+        }
+
+        function describeArc(x, y, radius, startAngle, endAngle){
+            var start = polarToCartesian(x, y, radius, endAngle);
+            var end = polarToCartesian(x, y, radius, startAngle);
+            var largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+            var d = [
+                "M", start.x, start.y, 
+                "A", radius, radius, 0, largeArcFlag, 0, end.x, end.y
+            ].join(" ");
+            return d;
+        }
+
+        function initDialSVG() {
+            dialBgArc.setAttribute("d", describeArc(dialCenter, dialCenter, dialRadius, startAngle, endAngle));
+            
+            let ticksHtml = "";
+            for (let i = 0; i <= 10; i++) {
+                let ang = startAngle + (arcSweep * (i / 10));
+                let inner = polarToCartesian(dialCenter, dialCenter, dialRadius - 15, ang);
+                let outer = polarToCartesian(dialCenter, dialCenter, dialRadius + 15, ang);
+                ticksHtml += `<line class="tick-line" x1="${inner.x}" y1="${inner.y}" x2="${outer.x}" y2="${outer.y}" />`;
+                
+                // Add labels for C min to max (or F min to max, but we'll re-render labels when direction changes)
+            }
+            dialTicks.innerHTML = ticksHtml;
+        }
+        initDialSVG();
+
+        function renderTickLabels() {
+            const {min, max} = getMinMax();
+            let labels = "";
+            for (let i = 0; i <= 10; i+=2) {
+                let ang = startAngle + (arcSweep * (i / 10));
+                let textPos = polarToCartesian(dialCenter, dialCenter, dialRadius + 32, ang);
+                let val = Math.round(min + (i/10)*(max-min));
+                labels += `<text class="tick-text" x="${textPos.x}" y="${textPos.y}">${val}</text>`;
+            }
+            // Keep existing lines
+            const lines = dialTicks.innerHTML.split('<text')[0]; // simple way to remove old texts
+            dialTicks.innerHTML = lines + labels;
+        }
+        renderTickLabels();
+
+        function updateDialProgress(value) {
+            const {min, max} = getMinMax();
+            let clamped = Math.max(min, Math.min(max, value));
+            let pct = (clamped - min) / (max - min);
+            let currentAngle = startAngle + (pct * arcSweep);
+            
+            if (currentAngle > startAngle) {
+                dialProgressArc.setAttribute("d", describeArc(dialCenter, dialCenter, dialRadius, startAngle, currentAngle));
+            } else {
+                dialProgressArc.setAttribute("d", "");
+            }
+
+            let knobPos = polarToCartesian(dialCenter, dialCenter, dialRadius, currentAngle);
+            dialKnob.style.left = `${knobPos.x}px`;
+            dialKnob.style.top = `${knobPos.y}px`;
+            
+            // Allow decimals in center display if user typed them, but if dragged it's integer
+            // Check if value is integer or string representation has decimals
+            let displayStr = String(value);
+            if (displayStr.length > 5) {
+                displayStr = Number(value).toFixed(1);
+            }
+            dialValueEl.textContent = displayStr;
+            dialWrapper.setAttribute("aria-valuenow", value);
+
+            let celsius = currentDir === 'CtoF' ? clamped : ((clamped - 32) * 5/9);
+            
+            // Hue mapping: -40 to 120 C mapped to hue 215 down to 5
+            let huePct = Math.max(0, Math.min(1, (celsius - -40) / 160));
+            let hue = 215 - (huePct * 210);
+            document.body.style.setProperty('--h', hue);
+
+            let label;
+            if (celsius <= 0) { label = 'Freezing'; }
+            else if (celsius <= 15) { label = 'Cold'; }
+            else if (celsius <= 20) { label = 'Cool'; }
+            else if (celsius <= 25) { label = 'Mild'; }
+            else if (celsius <= 32) { label = 'Warm'; }
+            else if (celsius <= 45) { label = 'Hot'; }
+            else { label = 'Extreme'; }
+            dialLabelEl.textContent = label;
+        }
+
+        function processValue(valStr, source) {
+            if (valStr.toString().trim() === '') {
+                errorMsg.classList.remove('visible', 'shake');
+                resValEl.textContent = '--';
+                resFactEl.textContent = '';
+                dialProgressArc.setAttribute("d", "");
+                dialValueEl.textContent = '0';
+                return;
+            }
+
+            try {
+                let res;
+                if (currentDir === 'CtoF') {
+                    res = celsiusToFahrenheit(valStr);
+                } else {
+                    res = fahrenheitToCelsius(valStr);
+                }
+                
+                let valNum = Number(valStr);
+                currentResultNum = res;
+                
+                if (source !== 'dial') updateDialProgress(valNum);
+                if (source !== 'input') exactInput.value = valStr; // keep exact string if available
+                
+                errorMsg.classList.remove('visible', 'shake');
+                resValEl.textContent = res;
+                
+                let celsius = currentDir === 'CtoF' ? valNum : res;
+                let fact = "";
+                let roundC = Math.round(celsius);
+                if (roundC === -40) fact = "-40 is the same in both scales";
+                else if (roundC === 0) fact = "Water freezes at 0 °C";
+                else if (roundC === 37) fact = "Normal human body temperature";
+                else if (roundC === 100) fact = "Water boils at 100 °C";
+                else if (celsius <= -273.15) fact = "Absolute zero";
+                
+                resFactEl.textContent = fact;
+                
+                if (source === 'input' || source === 'dial' || source === 'chip') {
+                    scheduleHistorySave(valStr, res, currentDir);
+                }
+            } catch (e) {
+                currentResultNum = null;
+                resValEl.textContent = '--';
+                resFactEl.textContent = '';
+                errorMsg.textContent = e.message;
+                errorMsg.classList.add('visible', 'shake');
+                setTimeout(() => errorMsg.classList.remove('shake'), 400);
+            }
+        }
+
+        // Direction Handling
+        function setDirection(dir, noProcess = false) {
+            currentDir = dir;
+            dirToggle.setAttribute('data-dir', dir);
+            
+            const {min, max} = getMinMax();
+            dialWrapper.setAttribute("aria-valuemin", min);
+            dialWrapper.setAttribute("aria-valuemax", max);
+            renderTickLabels();
+
+            if (dir === 'CtoF') {
+                btnCtoF.classList.add('active');
+                btnFtoC.classList.remove('active');
+                exactUnitEl.textContent = '°C';
+                dialUnitEl.textContent = '°C';
+                resUnitEl.textContent = '°F';
+            } else {
+                btnFtoC.classList.add('active');
+                btnCtoF.classList.remove('active');
+                exactUnitEl.textContent = '°F';
+                dialUnitEl.textContent = '°F';
+                resUnitEl.textContent = '°C';
+            }
+            if (!noProcess) {
+                processValue(exactInput.value, 'direction_change');
+            }
+        }
+
+        btnCtoF.addEventListener('click', () => setDirection('CtoF'));
+        btnFtoC.addEventListener('click', () => setDirection('FtoC'));
+        swapBtn.addEventListener('click', () => {
+            let prevResult = currentResultNum;
+            setDirection(currentDir === 'CtoF' ? 'FtoC' : 'CtoF', true);
+            if (prevResult !== null) {
+                exactInput.value = prevResult;
+                processValue(prevResult, 'swap');
+            } else {
+                processValue(exactInput.value, 'swap');
+            }
+        });
+
+        // Exact Input
+        exactInput.addEventListener('input', () => processValue(exactInput.value, 'input'));
+
+        // Dial Interaction
+        let isDragging = false;
+        function getAngleFromEvent(e) {
+            const rect = dialWrapper.getBoundingClientRect();
+            // Using actual wrapper size because of scaling
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            
+            let clientX = e.clientX;
+            let clientY = e.clientY;
+            if (e.touches && e.touches.length > 0) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            }
+
+            const dx = clientX - centerX;
+            const dy = clientY - centerY;
+            
+            let angle = Math.atan2(dy, dx) * 180 / Math.PI + 90;
+            if (angle < 0) angle += 360;
+            return angle;
+        }
+
+        function handleDialMove(e) {
+            if (!isDragging) return;
+            let angle = getAngleFromEvent(e);
+            
+            if (angle >= 0 && angle <= 45) angle += 360;
+            
+            if (angle < startAngle) angle = startAngle;
+            if (angle > endAngle) angle = endAngle;
+
+            const pct = (angle - startAngle) / arcSweep;
+            const {min, max} = getMinMax();
+            let val = min + (pct * (max - min));
+            val = Math.round(val);
+
+            processValue(val, 'dial');
+        }
+
+        dialKnob.addEventListener('pointerdown', (e) => {
+            isDragging = true;
+            dialKnob.setPointerCapture(e.pointerId);
+            dialWrapper.focus();
+            handleDialMove(e);
+        });
+        dialKnob.addEventListener('pointermove', (e) => {
+            if (isDragging) handleDialMove(e);
+        });
+        dialKnob.addEventListener('pointerup', (e) => {
+            isDragging = false;
+            dialKnob.releasePointerCapture(e.pointerId);
+        });
+        dialKnob.addEventListener('pointercancel', (e) => {
+            isDragging = false;
+            dialKnob.releasePointerCapture(e.pointerId);
+        });
+        // Click on dial wrapper
+        dialWrapper.addEventListener('pointerdown', (e) => {
+            if (e.target === dialKnob) return; // handled above
+            isDragging = true;
+            dialWrapper.setPointerCapture(e.pointerId);
+            dialWrapper.focus();
+            handleDialMove(e);
+        });
+        dialWrapper.addEventListener('pointermove', (e) => {
+            if (isDragging && e.target !== dialKnob) handleDialMove(e);
+        });
+        dialWrapper.addEventListener('pointerup', (e) => {
+            if (isDragging) dialWrapper.releasePointerCapture(e.pointerId);
+            isDragging = false;
+        });
+
+        dialWrapper.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const {min, max} = getMinMax();
+            let step = e.shiftKey ? 10 : 1;
+            let current = Number(exactInput.value) || 0;
+            current += e.deltaY < 0 ? step : -step;
+            current = Math.max(min, Math.min(max, current));
+            processValue(current, 'dial');
+        }, {passive: false});
+
+        dialWrapper.addEventListener('keydown', (e) => {
+            let step = 0;
+            const {min, max} = getMinMax();
+            let current = Number(exactInput.value) || 0;
+
+            switch(e.key) {
+                case 'ArrowRight':
+                case 'ArrowUp':
+                    step = e.shiftKey ? 10 : 1; break;
+                case 'ArrowLeft':
+                case 'ArrowDown':
+                    step = e.shiftKey ? -10 : -1; break;
+                case 'PageUp':
+                    step = 50; break;
+                case 'PageDown':
+                    step = -50; break;
+                case 'Home':
+                    current = min; step = 0; break;
+                case 'End':
+                    current = max; step = 0; break;
+                default: return; 
+            }
+            e.preventDefault();
+            if (step !== 0) current += step;
+            current = Math.max(min, Math.min(max, current));
+            processValue(current, 'dial');
+        });
+
+        // Chips
+        chips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                processValue(chip.getAttribute('data-val'), 'chip');
+            });
+        });
+
+        // Copy
+        copyBtn.addEventListener('click', () => {
+            if (currentResultNum !== null) {
+                const text = `${currentResultNum} ${resUnitEl.textContent}`;
+                navigator.clipboard.writeText(text);
+                const orig = copyBtn.textContent;
+                copyBtn.textContent = 'Copied!';
+                setTimeout(() => copyBtn.textContent = orig, 1500);
+            }
+        });
+
+        // History
+        function scheduleHistorySave(input, result, dir) {
+            clearTimeout(historyTimeout);
+            historyTimeout = setTimeout(() => {
+                if (history.length > 0 && history[0].input == input && history[0].dir == dir) return;
+                history.unshift({input, result, dir});
+                if (history.length > 5) history.pop();
+                renderHistory();
+            }, 900);
+        }
+
+        function renderHistory() {
+            if (history.length === 0) {
+                historyList.innerHTML = '<li class="history-empty">No recent conversions</li>';
+                return;
+            }
+            historyList.innerHTML = '';
+            history.forEach(item => {
+                const li = document.createElement('li');
+                li.className = 'history-item';
+                const fromU = item.dir === 'CtoF' ? '°C' : '°F';
+                const toU = item.dir === 'CtoF' ? '°F' : '°C';
+                li.innerHTML = `<span>${item.input} ${fromU}</span><span><strong>${item.result} ${toU}</strong></span>`;
+                li.addEventListener('click', () => {
+                    if (currentDir !== item.dir) setDirection(item.dir, true);
+                    processValue(item.input, 'history');
+                    // Saving again on history click as per prompt requirements if needed, but scheduleHistorySave handles dupes.
+                    scheduleHistorySave(item.input, item.result, item.dir);
+                });
+                historyList.appendChild(li);
+            });
+        }
+
+        clearBtn.addEventListener('click', () => {
+            history = [];
+            renderHistory();
+        });
+
+        // Tests UI
+        const testsToggle = document.getElementById('testsToggle');
+        const testsBody = document.getElementById('testsBody');
+        const runTestsBtn = document.getElementById('runTestsBtn');
+        const testsTableBody = document.getElementById('testsTableBody');
+        const testsSummary = document.getElementById('testsSummary');
+
+        testsToggle.addEventListener('click', (e) => {
+            if (e.target !== runTestsBtn) {
+                testsBody.classList.toggle('open');
+            }
+        });
+
+        const testCases = [
+            { input: 0, dir: 'CtoF', expected: 32.0 },
+            { input: 100, dir: 'CtoF', expected: 212.0 },
+            { input: -40, dir: 'CtoF', expected: -40.0 },
+            { input: 37, dir: 'CtoF', expected: 98.6 },
+            { input: 36.6, dir: 'CtoF', expected: 97.88 },
+            { input: -273.15, dir: 'CtoF', expected: -459.67 },
+            { input: " +37 ", dir: 'CtoF', expected: 98.6 },
+            { input: 32, dir: 'FtoC', expected: 0.0 },
+            { input: 212, dir: 'FtoC', expected: 100.0 },
+            { input: -40, dir: 'FtoC', expected: -40.0 },
+            { input: 98.6, dir: 'FtoC', expected: 37.0 },
+            { input: -459.67, dir: 'FtoC', expected: -273.15 },
+            { input: -274, dir: 'CtoF', expectError: true },
+            { input: -460, dir: 'FtoC', expectError: true },
+            { input: "1e5", dir: 'CtoF', expectError: true },
+            { input: "abc", dir: 'CtoF', expectError: true },
+            { input: "", dir: 'FtoC', expectError: true }
+        ];
+
+        runTestsBtn.addEventListener('click', () => {
+            testsBody.classList.add('open');
+            testsTableBody.innerHTML = '';
+            let passed = 0;
+
+            testCases.forEach(tc => {
+                const tr = document.createElement('tr');
+                let actual = null;
+                let isPass = false;
+                let expectedText = tc.expectError ? "Error" : tc.expected;
+                
+                try {
+                    if (tc.dir === 'CtoF') actual = celsiusToFahrenheit(tc.input);
+                    else actual = fahrenheitToCelsius(tc.input);
+                    
+                    if (tc.expectError) {
+                        isPass = false;
+                    } else if (actual === tc.expected) {
+                        isPass = true;
+                    }
+                } catch (e) {
+                    actual = "Error";
+                    if (tc.expectError) isPass = true;
+                }
+
+                if (isPass) passed++;
+
+                tr.innerHTML = `
+                    <td>'${tc.input}'</td>
+                    <td>${tc.dir}</td>
+                    <td>${expectedText}</td>
+                    <td>${actual}</td>
+                    <td class="${isPass ? 'pass' : 'fail'}">${isPass ? 'PASS' : 'FAIL'}</td>
+                `;
+                testsTableBody.appendChild(tr);
+            });
+
+            testsSummary.textContent = `${passed} of ${testCases.length} tests passed.`;
+            testsSummary.style.color = passed === testCases.length ? '#10b981' : '#ef4444';
+        });
+
+        // Init
+        exactInput.value = 0;
+        processValue(0, 'init');
+    </script>
+</body>
+</html>

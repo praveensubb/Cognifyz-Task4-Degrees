@@ -1,0 +1,273 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Degrees - Celsius and Fahrenheit converter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+@property --h { syntax: '<number>'; inherits: true; initial-value: 150; }
+:root { --h: 150; --accent: hsl(var(--h) 72% 44%); transition: --h .6s ease; font-family: 'Inter', system-ui, sans-serif; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: flex; flex-direction: column; background: #fbfaf8; color: #1d1b18; }
+.bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 28px; flex-wrap: wrap; }
+.logo { font: 800 1.35rem 'Outfit', sans-serif; letter-spacing: -.02em; }
+.seg { position: relative; display: grid; grid-template-columns: 1fr 1fr; background: #eeebe5; border-radius: 999px; padding: 4px; }
+.seg .thumb { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc(50% - 4px); background: #1d1b18; border-radius: 999px; transition: transform .3s cubic-bezier(.3,.9,.3,1); }
+.seg[data-dir="FC"] .thumb { transform: translateX(100%); }
+.seg button { position: relative; z-index: 1; border: 0; background: none; font: 600 .9rem 'Inter'; padding: 9px 20px; border-radius: 999px; cursor: pointer; color: #6f6a62; transition: color .25s; white-space: nowrap; }
+.seg button[aria-pressed="true"] { color: #fff; }
+.split { flex: 1; display: grid; grid-template-columns: 1fr 1fr; position: relative; min-height: 440px; }
+.side { padding: 44px clamp(24px, 5vw, 64px); display: flex; flex-direction: column; justify-content: center; gap: 14px; min-width: 0; }
+.in { background: radial-gradient(#d9d4ca 1.2px, transparent 1.4px) 0 0 / 22px 22px, #fbfaf8; }
+.out { position: relative; overflow: hidden; color: #fff;
+  background:
+    radial-gradient(900px 520px at 90% -5%, hsl(calc(var(--h) + 28) 90% 64% / .8), transparent 62%),
+    radial-gradient(700px 520px at -5% 105%, hsl(calc(var(--h) - 22) 80% 28% / .6), transparent 66%),
+    var(--accent); }
+.out::after { content: '\00B0'; position: absolute; right: -1vw; bottom: -12vw; font: 800 clamp(16rem, 34vw, 32rem)/1 'Outfit', sans-serif; color: #fff; opacity: .1; pointer-events: none; }
+.out > * { position: relative; z-index: 1; }
+@keyframes rise { from { opacity: 0; transform: translateY(18px); } }
+.side > :not(.err) { animation: rise .7s cubic-bezier(.2,.8,.2,1) both; }
+.side > :nth-child(2) { animation-delay: .07s; } .side > :nth-child(3) { animation-delay: .14s; }
+.side > :nth-child(4) { animation-delay: .21s; } .side > :nth-child(5) { animation-delay: .28s; }
+.cap { font: 600 1rem 'Inter'; color: #7a756d; }
+.out .cap { color: #ffffffcc; }
+.inwrap { display: flex; align-items: baseline; gap: 10px; border-bottom: 3px solid #1d1b18; padding-bottom: 6px; transition: border-color .2s; }
+.inwrap:focus-within { border-color: var(--accent); }
+#inp { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; font: 800 clamp(3rem, 8vw, 6.5rem)/1.05 'Outfit', sans-serif; letter-spacing: -.03em; color: inherit; }
+.u { font: 600 clamp(1.4rem, 3vw, 2.2rem) 'Outfit', sans-serif; }
+.in .u { color: var(--accent); }
+.err { min-height: 1.4em; color: #b3402a; font-size: .95rem; }
+.err.shake { animation: shake .35s; }
+@keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+.chips, .hist { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { border: 1.5px solid #dcd7ce; background: #fff; border-radius: 999px; padding: 8px 16px; font: 500 .92rem 'Inter'; cursor: pointer; color: #1d1b18; transition: border-color .2s, background .2s; }
+.chip:hover { border-color: var(--accent); background: #f3f1ec; }
+.res { display: flex; align-items: baseline; gap: 10px; }
+.big { font: 800 clamp(3.4rem, 9vw, 7.5rem)/1.05 'Outfit', sans-serif; letter-spacing: -.03em; font-variant-numeric: tabular-nums; word-break: break-all; }
+.mood { align-self: flex-start; font: 600 1rem 'Inter', sans-serif; background: #ffffff2b; border: 1px solid #ffffff59; padding: 7px 18px; border-radius: 999px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.mood:empty { display: none; }
+.scale { margin-top: 14px; max-width: 460px; }
+.track { position: relative; height: 10px; border-radius: 99px; background: linear-gradient(90deg, #4aa3ff, #2ec4b6, #7bd88f, #ffd166, #ff8a3d, #ff4d4d); box-shadow: 0 0 0 2px #ffffff55; }
+.pin { position: absolute; top: 50%; left: 0; width: 24px; height: 24px; margin: -12px 0 0 -12px; border-radius: 50%; background: #fff; box-shadow: 0 4px 12px #0005; transition: left .55s cubic-bezier(.3,.9,.3,1); }
+.ticks { display: flex; justify-content: space-between; margin-top: 9px; font-size: .78rem; color: #ffffffcc; }
+.logo { display: inline-flex; align-items: center; gap: 8px; }
+.logo svg { color: var(--accent); }
+.fact { min-height: 2.8em; max-width: 36ch; color: #ffffffdd; }
+.copy { align-self: flex-start; border: 2px solid #fff; background: transparent; color: #fff; border-radius: 999px; padding: 9px 20px; font: 600 .92rem 'Inter'; cursor: pointer; transition: background .2s, color .2s; }
+.copy:hover { background: #fff; color: #1d1b18; }
+.flip { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 76px; height: 76px; border-radius: 50%; border: 0; background: #fff; box-shadow: 0 0 0 9px #ffffff66, 0 12px 32px #0004; font-size: 1.8rem; cursor: pointer; color: #1d1b18; transition: transform .4s cubic-bezier(.3,.9,.3,1); z-index: 2; }
+.flip:hover { background: #f3f1ec; }
+.flip.spin { transform: translate(-50%, -50%) rotate(180deg); }
+.foot { display: flex; align-items: center; gap: 14px; padding: 16px 28px 24px; flex-wrap: wrap; }
+.foot b { font: 600 .95rem 'Inter'; }
+.hist .chip { font-variant-numeric: tabular-nums; }
+.hint { color: #7a756d; font-size: .9rem; }
+.tests { margin-left: auto; }
+dialog { border: 0; border-radius: 22px; padding: 26px; width: min(640px, 92vw); box-shadow: 0 20px 60px #0004; }
+dialog::backdrop { background: #0006; }
+dialog h2 { font: 800 1.3rem 'Outfit'; margin-bottom: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: .88rem; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #e8e4dc; }
+.ok { color: #1e8a54; font-weight: 600; } .bad { color: #c0392b; font-weight: 600; }
+.sum { margin: 12px 0; font-weight: 600; }
+.small { border: 1.5px solid #dcd7ce; background: #fff; border-radius: 999px; padding: 8px 18px; font: 600 .9rem 'Inter'; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+@media (max-width: 760px) {
+  .split { grid-template-columns: 1fr; }
+  .side { padding: 36px 22px 52px; }
+  .flip { width: 64px; height: 64px; }
+  .flip .ar { display: inline-block; transform: rotate(90deg); }
+  .bar { padding: 12px 16px; } .foot { padding: 16px; } .tests { margin-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<header class="bar">
+  <span class="logo"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 14.8V5a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0z"/></svg>Degrees</span>
+  <div class="seg" id="seg" data-dir="CF" role="group" aria-label="Conversion direction">
+    <span class="thumb"></span>
+    <button type="button" data-dir="CF" aria-pressed="true">Celsius to Fahrenheit</button>
+    <button type="button" data-dir="FC" aria-pressed="false">Fahrenheit to Celsius</button>
+  </div>
+</header>
+ 
+<main class="split">
+  <section class="side in">
+    <p class="cap" id="capIn">From Celsius</p>
+    <div class="inwrap"><label for="inp" style="position:absolute;left:-9999px">Temperature</label><input id="inp" inputmode="decimal" autocomplete="off" value="37" placeholder="0"><span class="u" id="uIn">°C</span></div>
+    <p class="err" id="err" role="alert"></p>
+    <div class="chips" aria-label="Quick values">
+      <button class="chip" data-v="-40">-40</button><button class="chip" data-v="0">0</button>
+      <button class="chip" data-v="37">37</button><button class="chip" data-v="100">100</button>
+    </div>
+  </section>
+ 
+  <button class="flip" id="flip" type="button" aria-label="Swap direction (S)" title="Swap direction (S)"><span class="ar">&#8646;</span></button>
+ 
+  <section class="side out" aria-live="polite">
+    <p class="cap" id="capOut">To Fahrenheit</p>
+    <div class="res"><span class="big" id="out">98.6</span><span class="u" id="uOut">°F</span></div>
+    <p class="mood" id="mood"></p>
+    <p class="fact" id="fact"></p>
+    <button class="copy" id="copy" type="button">Copy result</button>
+    <div class="scale" aria-hidden="true"><div class="track"><span class="pin" id="pin"></span></div><div class="ticks"><span>-40 °C</span><span>0</span><span>40</span><span>80</span><span>120 °C</span></div></div>
+  </section>
+</main>
+ 
+<footer class="foot">
+  <b>Recent</b>
+  <div class="hist" id="hist"></div>
+  <button class="small" id="clear" type="button">Clear</button>
+  <button class="small tests" id="open" type="button">Run tests</button>
+</footer>
+<p class="hint" style="text-align:center;padding-bottom:20px">Cognifyz Internship, Level 2, Task 4. Press S to swap, arrow keys to nudge.</p>
+ 
+<dialog id="dlg">
+  <h2>Test cases</h2>
+  <p class="sum" id="sum"></p>
+  <table><thead><tr><th>Input</th><th>Direction</th><th>Expected</th><th>Got</th><th></th></tr></thead><tbody id="tb"></tbody></table>
+  <p style="margin-top:16px"><button class="small" id="close" type="button">Close</button></p>
+</dialog>
+ 
+<script>
+/* Step 2: conversion logic */
+const MIN = { C: -273.15, F: -459.67 };
+const c2f = c => c * 9 / 5 + 32;
+const f2c = f => (f - 32) * 5 / 9;
+const r2 = x => (Math.round((x + Number.EPSILON) * 100) / 100) || 0;
+ 
+/* Step 1: accept and validate input. dir is "CF" or "FC" (step 3). */
+function convert(raw, dir) {
+  const s = String(raw).trim(), from = dir[0];
+  if (s === '') return { err: 'Enter a temperature to convert.' };
+  if (!/^[+-]?(\d+\.?\d*|\.\d+)$/.test(s)) return { err: 'Use numbers only, for example 36.6 or -40.' };
+  const v = parseFloat(s);
+  if (!isFinite(v)) return { err: 'That number is too large.' };
+  if (v < MIN[from]) return { err: 'Below absolute zero (' + MIN[from] + ' °' + from + '). Enter a higher value.' };
+  return { input: v, value: r2(dir === 'CF' ? c2f(v) : f2c(v)) };
+}
+ 
+const $ = s => document.querySelector(s);
+const inp = $('#inp'), err = $('#err'), seg = $('#seg');
+const NAME = { C: 'Celsius', F: 'Fahrenheit' };
+let dir = 'CF', last = null, timer, history = [];
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const label = c => c < 0 ? 'Freezing' : c < 10 ? 'Cold' : c < 18 ? 'Cool' : c < 26 ? 'Mild' : c < 33 ? 'Warm' : c < 45 ? 'Hot' : 'Extreme';
+const hueFor = c => 215 - clamp((c + 40) / 160, 0, 1) * 210;
+function fact(c) {
+  const n = x => Math.abs(c - x) < 0.005;
+  if (c <= -273.15) return 'Absolute zero: nothing can be colder.';
+  if (n(-40)) return '-40 is the same in both scales.';
+  if (n(0)) return 'Water freezes at 0 °C (32 °F).';
+  if (n(37)) return 'Normal body temperature is about 37 °C (98.6 °F).';
+  if (n(100)) return 'Water boils at 100 °C (212 °F) at sea level.';
+  return '';
+}
+ 
+/* Smooth count-up of the result number */
+let shown = 98.6, raf;
+function countTo(v) {
+  cancelAnimationFrame(raf);
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { $('#out').textContent = v; shown = v; return; }
+  const a = shown, t0 = performance.now();
+  (function step(now) {
+    const p = Math.min(1, (now - t0) / 380), cur = a + (v - a) * (1 - Math.pow(1 - p, 3));
+    $('#out').textContent = p < 1 ? Math.round(cur * 100) / 100 : v; shown = p < 1 ? cur : v;
+    if (p < 1) raf = requestAnimationFrame(step);
+  })(t0);
+}
+ 
+/* Render; save=true means the user typed or picked a value (not a direction change) */
+function render(save) {
+  const f = dir[0], t = dir[1], r = convert(inp.value, dir);
+  $('#uIn').textContent = '°' + f; $('#uOut').textContent = '°' + t;
+  $('#capIn').textContent = 'From ' + NAME[f]; $('#capOut').textContent = 'To ' + NAME[t];
+  if (r.err) {
+    last = null; err.textContent = inp.value.trim() === '' ? '' : r.err;
+    if (inp.value.trim() !== '') { err.classList.remove('shake'); void err.offsetWidth; err.classList.add('shake'); }
+    $('#out').textContent = '--'; $('#mood').textContent = ''; $('#fact').textContent = 'Waiting for a valid temperature.';
+    return;
+  }
+  err.textContent = ''; last = r;
+  const c = f === 'C' ? r.input : r.value;
+  countTo(r.value); $('#mood').textContent = label(c); $('#fact').textContent = fact(c);
+  document.documentElement.style.setProperty('--h', hueFor(c).toFixed(1));
+  $('#pin').style.left = (clamp((c + 40) / 160, 0, 1) * 100) + '%';
+  clearTimeout(timer); if (save) timer = setTimeout(pushHistory, 900);
+}
+ 
+/* History (in memory only) */
+function pushHistory() {
+  if (!last) return;
+  const text = last.input + ' °' + dir[0] + ' = ' + last.value + ' °' + dir[1];
+  if (history[0] && history[0].text === text) return;
+  history.unshift({ text, dir, v: String(last.input) }); history = history.slice(0, 5); drawHistory();
+}
+function drawHistory() {
+  const box = $('#hist'); box.innerHTML = '';
+  if (!history.length) { box.innerHTML = '<span class="hint">Nothing yet. Type a value to start.</span>'; return; }
+  history.forEach(h => {
+    const b = document.createElement('button'); b.className = 'chip'; b.textContent = h.text;
+    b.onclick = () => { setDir(h.dir); inp.value = h.v; render(false); };
+    box.appendChild(b);
+  });
+}
+ 
+/* Step 3: choose direction */
+function setDir(d) {
+  dir = d; seg.dataset.dir = d;
+  seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.dir === d));
+}
+function swap() {
+  const r = convert(inp.value, dir);
+  setDir(dir === 'CF' ? 'FC' : 'CF');
+  if (!r.err) inp.value = r.value;
+  $('#flip').classList.toggle('spin'); render(false);
+}
+seg.querySelectorAll('button').forEach(b => b.onclick = () => { setDir(b.dataset.dir); render(false); });
+$('#flip').onclick = swap;
+inp.addEventListener('input', () => render(true));
+inp.addEventListener('keydown', e => {
+  if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+  e.preventDefault();
+  const r = convert(inp.value || '0', dir); if (r.err) return;
+  inp.value = r2(r.input + (e.key === 'ArrowUp' ? 1 : -1) * (e.shiftKey ? 10 : 1)); render(true);
+});
+document.addEventListener('keydown', e => { if ((e.key === 's' || e.key === 'S') && document.activeElement !== inp) swap(); });
+document.querySelectorAll('.chips .chip').forEach(c => c.onclick = () => { inp.value = c.dataset.v; render(true); });
+$('#clear').onclick = () => { history = []; drawHistory(); };
+$('#copy').onclick = async () => {
+  if (!last) return; const b = $('#copy');
+  try { await navigator.clipboard.writeText(last.input + ' °' + dir[0] + ' = ' + last.value + ' °' + dir[1]); b.textContent = 'Copied'; } catch { b.textContent = 'Copy failed'; }
+  setTimeout(() => b.textContent = 'Copy result', 1400);
+};
+ 
+/* Step 4: test the program with different input values */
+const cases = [
+  ['0','CF',32],['100','CF',212],['-40','CF',-40],['37','CF',98.6],['36.6','CF',97.88],
+  ['32','FC',0],['212','FC',100],['-40','FC',-40],['98.6','FC',37],['-273.15','CF',-459.67],
+  ['-300','CF','error'],['-460','FC','error'],['abc','CF','error'],['','FC','error'],['1e5','CF','error']
+];
+$('#open').onclick = () => {
+  const tb = $('#tb'); tb.innerHTML = ''; let pass = 0;
+  cases.forEach(([raw, d, exp]) => {
+    const r = convert(raw, d), got = r.err ? 'error' : r.value, ok = got === exp; if (ok) pass++;
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td>' + (raw || '(empty)') + '</td><td>' + d[0] + ' to ' + d[1] + '</td><td>' + exp + '</td><td>' + got + '</td><td class="' + (ok ? 'ok' : 'bad') + '">' + (ok ? 'pass' : 'fail') + '</td>';
+    tb.appendChild(tr);
+  });
+  $('#sum').textContent = pass + ' of ' + cases.length + ' tests passed.';
+  $('#dlg').showModal();
+};
+$('#close').onclick = () => $('#dlg').close();
+ 
+drawHistory(); render(false);
+</script>
+</body>
+</html>

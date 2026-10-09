@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Degrees - Temperature Converter</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        @property --h {
+            syntax: '<number>';
+            inherits: true;
+            initial-value: 215;
+        }
+
+        :root {
+            --bg-color: #FBFAF8;
+            --text-main: #1D1B18;
+            --text-muted: #8c8880;
+            --accent: hsl(var(--h) 72% 44%);
+            --error: #ef4444;
+            --border: #e0ddd6;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            transition: --h 0.6s ease-out;
+        }
+
+        h1, .outfit-font {
+            font-family: 'Outfit', sans-serif;
+        }
+
+        /* Top Bar */
+        .top-bar {
+            padding: 14px 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            z-index: 10;
+        }
+
+        .logo {
+            font-weight: 800;
+            font-size: 1.35rem;
+            color: var(--text-main);
+        }
+
+        /* Toggle */
+        .toggle-group {
+            display: flex;
+            background: #EEEBE5;
+            border-radius: 999px;
+            padding: 4px;
+            position: relative;
+        }
+        .toggle-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            padding: 8px 16px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            z-index: 1;
+            transition: color 0.3s;
+            border-radius: 999px;
+        }
+        .toggle-btn.active {
+            color: #fff;
+        }
+        .toggle-btn:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+        .toggle-slider {
+            position: absolute;
+            top: 4px; left: 4px;
+            width: calc(50% - 4px);
+            height: calc(100% - 8px);
+            background: #1D1B18;
+            border-radius: 999px;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 0;
+        }
+        .toggle-group[data-dir="FtoC"] .toggle-slider {
+            transform: translateX(100%);
+        }
+
+        /* Split Area */
+        .split-area {
+            flex: 1;
+            min-height: 440px;
+            display: flex;
+            position: relative;
+        }
+
+        .half {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 40px;
+        }
+
+        /* Left Half */
+        .left-half {
+            background-color: var(--bg-color);
+            align-items: flex-end;
+            text-align: right;
+        }
+
+        .caption {
+            font-weight: 600;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+        .left-half .caption { color: var(--text-muted); }
+
+        .input-group {
+            display: flex;
+            align-items: baseline;
+            position: relative;
+            margin-bottom: 4px;
+        }
+        .huge-input {
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid #1D1B18;
+            color: var(--text-main);
+            font-size: clamp(3rem, 8vw, 6.5rem);
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            text-align: right;
+            width: 100%;
+            max-width: 400px;
+            outline: none;
+            transition: border-color 0.3s;
+            border-radius: 0; /* for iOS */
+        }
+        .huge-input:focus {
+            border-bottom-color: var(--accent);
+        }
+        .huge-input::placeholder { color: #ccc; }
+        
+        .unit {
+            font-size: clamp(1.5rem, 4vw, 3rem);
+            font-weight: 800;
+            margin-left: 12px;
+        }
+        .left-half .unit { color: var(--accent); }
+
+        .error-msg {
+            color: var(--error);
+            font-weight: 600;
+            font-size: 0.9rem;
+            min-height: 20px;
+            opacity: 0;
+            margin-bottom: 24px;
+        }
+        .error-msg.visible { opacity: 1; }
+        .shake { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        .chips-container {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+        .chip {
+            background: #fff;
+            border: 1.5px solid var(--border);
+            color: var(--text-main);
+            padding: 8px 16px;
+            border-radius: 999px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: border-color 0.2s, color 0.2s;
+        }
+        .chip:hover, .chip:focus-visible {
+            border-color: var(--accent);
+            color: var(--accent);
+            outline: none;
+        }
+
+        /* Right Half */
+        .right-half {
+            background-color: var(--accent);
+            color: #fff;
+            align-items: flex-start;
+            text-align: left;
+        }
+        
+        .right-half .caption { color: rgba(255,255,255,0.9); }
+        
+        .result-group {
+            display: flex;
+            align-items: baseline;
+            margin-bottom: 16px;
+        }
+        .huge-result {
+            font-size: clamp(3.4rem, 9vw, 7.5rem);
+            font-weight: 800;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -0.03em;
+        }
+        .right-half .unit { color: rgba(255,255,255,0.9); }
+
+        .mood-word {
+            font-size: 1.6rem;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+
+        .fact-line {
+            font-size: 1rem;
+            font-weight: 500;
+            opacity: 0.9;
+            min-height: 24px;
+            margin-bottom: 24px;
+        }
+
+        .copy-btn {
+            background: transparent;
+            border: 2px solid #fff;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 999px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+        }
+        .copy-btn:hover {
+            background: #fff;
+            color: var(--accent);
+        }
+        .copy-btn:focus-visible {
+            outline: 2px solid #fff;
+            outline-offset: 4px;
+        }
+
+        /* Center Swap Button */
+        .swap-btn {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 76px;
+            height: 76px;
+            border-radius: 50%;
+            background: #fff;
+            border: none;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+            color: var(--text-main);
+            font-size: 2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .swap-btn:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 4px;
+        }
+        .split-area.flipped .swap-btn {
+            transform: translate(-50%, -50%) rotate(180deg);
+        }
+
+        /* Footer Strip */
+        .footer-strip {
+            padding: 16px 28px 24px;
+            background: var(--bg-color);
+            border-top: 1px solid var(--border);
+        }
+
+        .footer-top {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .recent-title {
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .history-list {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            list-style: none;
+        }
+        .history-chip {
+            background: #EEEBE5;
+            border: none;
+            color: var(--text-main);
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .history-chip:hover, .history-chip:focus-visible {
+            background: #e0ddd6;
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+        .history-empty {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            font-style: italic;
+            display: flex;
+            align-items: center;
+        }
+
+        .clear-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+        .clear-btn:hover { color: var(--text-main); }
+        
+        .run-tests-btn {
+            background: var(--text-main);
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-left: auto;
+        }
+        .run-tests-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+        .credits {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        /* Dialog */
+        dialog {
+            margin: auto;
+            border: none;
+            border-radius: 22px;
+            padding: 24px;
+            max-width: 600px;
+            width: 90%;
+            background: #fff;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            color: var(--text-main);
+        }
+        dialog::backdrop {
+            background: rgba(0,0,0,0.6);
+        }
+        .dialog-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .dialog-header h2 { font-size: 1.5rem; }
+        .close-btn {
+            background: #EEEBE5;
+            border: none;
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
+        .tests-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+            text-align: left;
+            margin-bottom: 16px;
+        }
+        .tests-table th, .tests-table td {
+            padding: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+        .pass { color: #10b981; font-weight: 700; }
+        .fail { color: #ef4444; font-weight: 700; }
+        .tests-summary { font-weight: 700; font-size: 1.1rem; }
+
+        /* Responsive */
+        @media (max-width: 760px) {
+            .split-area {
+                flex-direction: column;
+            }
+            .left-half { align-items: center; text-align: center; }
+            .huge-input { text-align: center; }
+            .chips-container { justify-content: center; }
+            
+            .right-half { align-items: center; text-align: center; }
+            .swap-btn {
+                top: 50%; left: 50%;
+                transform: translate(-50%, -50%);
+            }
+            .split-area.flipped .swap-btn {
+                transform: translate(-50%, -50%) rotate(180deg);
+            }
+            .footer-top { flex-direction: column; align-items: flex-start; }
+            .run-tests-btn { margin-left: 0; margin-top: 10px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="top-bar">
+        <div class="logo outfit-font">Degrees</div>
+        <div class="toggle-group" id="dirToggle" data-dir="CtoF">
+            <div class="toggle-slider"></div>
+            <button class="toggle-btn active" id="btnCtoF">Celsius to Fahrenheit</button>
+            <button class="toggle-btn" id="btnFtoC">Fahrenheit to Celsius</button>
+        </div>
+    </div>
+
+    <div class="split-area" id="splitArea">
+        <div class="half left-half">
+            <div class="caption outfit-font" id="leftCaption">From Celsius</div>
+            <div class="input-group">
+                <input type="text" id="exactInput" class="huge-input outfit-font" placeholder="0" aria-label="Temperature input">
+                <span class="unit outfit-font" id="leftUnit">°C</span>
+            </div>
+            <div class="error-msg" id="errorMsg"></div>
+            <div class="chips-container">
+                <button class="chip" data-val="-40">-40</button>
+                <button class="chip" data-val="0">0</button>
+                <button class="chip" data-val="37">37</button>
+                <button class="chip" data-val="100">100</button>
+            </div>
+        </div>
+
+        <button class="swap-btn" id="swapBtn" aria-label="Swap direction and copy result">&#8646;</button>
+
+        <div class="half right-half" aria-live="polite">
+            <div class="caption outfit-font" id="rightCaption">To Fahrenheit</div>
+            <div class="result-group">
+                <span class="huge-result outfit-font" id="resVal">32</span>
+                <span class="unit outfit-font" id="rightUnit">°F</span>
+            </div>
+            <div class="mood-word outfit-font" id="moodWord">Freezing</div>
+            <div class="fact-line" id="factLine">Water freezes</div>
+            <button class="copy-btn" id="copyBtn">Copy result</button>
+        </div>
+    </div>
+
+    <div class="footer-strip">
+        <div class="footer-top">
+            <span class="recent-title">Recent</span>
+            <ul class="history-list" id="historyList">
+                <li class="history-empty" id="historyEmpty">Nothing yet. Type a value to start.</li>
+            </ul>
+            <button class="clear-btn" id="clearBtn" style="display:none;">Clear</button>
+            <button class="run-tests-btn" id="runTestsBtn">Run tests</button>
+        </div>
+        <div class="credits">Cognifyz Internship, Level 2, Task 4. Press S to swap, arrow keys to nudge.</div>
+    </div>
+
+    <dialog id="testDialog">
+        <div class="dialog-header">
+            <h2 class="outfit-font">Test Results</h2>
+            <button class="close-btn" id="closeDialogBtn">✕</button>
+        </div>
+        <div class="tests-summary" id="testsSummary"></div>
+        <div style="max-height: 50vh; overflow-y: auto;">
+            <table class="tests-table">
+                <thead><tr><th>Input</th><th>Dir</th><th>Expected</th><th>Got</th><th>Status</th></tr></thead>
+                <tbody id="testsTableBody"></tbody>
+            </table>
+        </div>
+    </dialog>
+
+    <script>
+        // DOM Elements
+        const dirToggle = document.getElementById('dirToggle');
+        const btnCtoF = document.getElementById('btnCtoF');
+        const btnFtoC = document.getElementById('btnFtoC');
+        const splitArea = document.getElementById('splitArea');
+        
+        const leftCaption = document.getElementById('leftCaption');
+        const exactInput = document.getElementById('exactInput');
+        const leftUnit = document.getElementById('leftUnit');
+        const errorMsg = document.getElementById('errorMsg');
+        
+        const swapBtn = document.getElementById('swapBtn');
+        
+        const rightCaption = document.getElementById('rightCaption');
+        const resVal = document.getElementById('resVal');
+        const rightUnit = document.getElementById('rightUnit');
+        const moodWord = document.getElementById('moodWord');
+        const factLine = document.getElementById('factLine');
+        const copyBtn = document.getElementById('copyBtn');
+        
+        const chips = document.querySelectorAll('.chip');
+        const historyList = document.getElementById('historyList');
+        const historyEmpty = document.getElementById('historyEmpty');
+        const clearBtn = document.getElementById('clearBtn');
+        
+        const testDialog = document.getElementById('testDialog');
+        const runTestsBtn = document.getElementById('runTestsBtn');
+        const closeDialogBtn = document.getElementById('closeDialogBtn');
+        const testsTableBody = document.getElementById('testsTableBody');
+        const testsSummary = document.getElementById('testsSummary');
+
+        // Logic
+        function validateTemperature(value, scale) {
+            let valStr = String(value).trim();
+            if (valStr === '') throw new Error("Input cannot be empty.");
+            if (valStr.toLowerCase().includes('e')) throw new Error("Scientific notation not allowed.");
+            
+            let num = Number(valStr);
+            if (isNaN(num) || !isFinite(num)) {
+                throw new Error("Invalid input: Please enter a numeric value.");
+            }
+            if (scale === 'C' && num < -273.15) {
+                throw new Error("Temperature cannot be below absolute zero (-273.15 C).");
+            }
+            if (scale === 'F' && num < -459.67) {
+                throw new Error("Temperature cannot be below absolute zero (-459.67 F).");
+            }
+            return num;
+        }
+
+        function celsiusToFahrenheit(c) {
+            let cVal = validateTemperature(c, 'C');
+            let f = cVal * 9 / 5 + 32;
+            let rounded = Math.round(f * 100) / 100;
+            return Object.is(rounded, -0) ? 0 : rounded;
+        }
+
+        function fahrenheitToCelsius(f) {
+            let fVal = validateTemperature(f, 'F');
+            let c = (fVal - 32) * 5 / 9;
+            let rounded = Math.round(c * 100) / 100;
+            return Object.is(rounded, -0) ? 0 : rounded;
+        }
+
+        let currentDir = 'CtoF';
+        let currentResultNum = null;
+        let history = [];
+        let historyTimeout = null;
+
+        function updateVisuals(celsius) {
+            let huePct = Math.max(0, Math.min(1, (celsius - -40) / 160));
+            let hue = 215 - (huePct * 210);
+            document.body.style.setProperty('--h', hue);
+
+            let mood = "";
+            if (celsius < 0) mood = 'Freezing';
+            else if (celsius < 10) mood = 'Cold';
+            else if (celsius < 18) mood = 'Cool';
+            else if (celsius < 26) mood = 'Mild';
+            else if (celsius < 33) mood = 'Warm';
+            else if (celsius < 45) mood = 'Hot';
+            else mood = 'Extreme';
+            moodWord.textContent = mood;
+
+            let fact = "";
+            let roundC = Math.round(celsius);
+            if (roundC === -40) fact = "-40 is the same in both scales";
+            else if (roundC === 0) fact = "Water freezes at 0 °C";
+            else if (roundC === 37) fact = "Normal human body temperature";
+            else if (roundC === 100) fact = "Water boils at 100 °C";
+            else if (celsius <= -273.15) fact = "Absolute zero";
+            factLine.textContent = fact;
+        }
+
+        function processValue(valStr, source) {
+            if (valStr.toString().trim() === '') {
+                errorMsg.classList.remove('visible', 'shake');
+                resVal.textContent = '--';
+                moodWord.textContent = '';
+                factLine.textContent = '';
+                return;
+            }
+
+            try {
+                let res;
+                if (currentDir === 'CtoF') res = celsiusToFahrenheit(valStr);
+                else res = fahrenheitToCelsius(valStr);
+                
+                let valNum = Number(valStr);
+                currentResultNum = res;
+                if (source !== 'input') exactInput.value = valStr;
+                
+                errorMsg.classList.remove('visible', 'shake');
+                resVal.textContent = res;
+                
+                let celsius = currentDir === 'CtoF' ? valNum : res;
+                updateVisuals(celsius);
+                
+                if (source === 'input' || source === 'chip' || source === 'history') {
+                    scheduleHistorySave(valStr, res, currentDir);
+                }
+            } catch (e) {
+                currentResultNum = null;
+                resVal.textContent = '--';
+                moodWord.textContent = '';
+                factLine.textContent = '';
+                errorMsg.textContent = e.message;
+                errorMsg.classList.add('visible', 'shake');
+                setTimeout(() => errorMsg.classList.remove('shake'), 400);
+            }
+        }
+
+        function setDirection(dir, noProcess = false) {
+            currentDir = dir;
+            dirToggle.setAttribute('data-dir', dir);
+            
+            if (dir === 'CtoF') {
+                btnCtoF.classList.add('active');
+                btnFtoC.classList.remove('active');
+                leftCaption.textContent = 'From Celsius';
+                rightCaption.textContent = 'To Fahrenheit';
+                leftUnit.textContent = '°C';
+                rightUnit.textContent = '°F';
+                splitArea.classList.remove('flipped');
+            } else {
+                btnFtoC.classList.add('active');
+                btnCtoF.classList.remove('active');
+                leftCaption.textContent = 'From Fahrenheit';
+                rightCaption.textContent = 'To Celsius';
+                leftUnit.textContent = '°F';
+                rightUnit.textContent = '°C';
+                splitArea.classList.add('flipped');
+            }
+            if (!noProcess) processValue(exactInput.value, 'toggle');
+        }
+
+        btnCtoF.addEventListener('click', () => setDirection('CtoF'));
+        btnFtoC.addEventListener('click', () => setDirection('FtoC'));
+
+        swapBtn.addEventListener('click', () => {
+            let prevResult = currentResultNum;
+            setDirection(currentDir === 'CtoF' ? 'FtoC' : 'CtoF', true);
+            if (prevResult !== null) {
+                exactInput.value = prevResult;
+                processValue(prevResult, 'swap');
+            } else {
+                processValue(exactInput.value, 'swap');
+            }
+        });
+
+        exactInput.addEventListener('input', () => processValue(exactInput.value, 'input'));
+
+        exactInput.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                e.preventDefault();
+                let val = parseFloat(exactInput.value) || 0;
+                let step = e.shiftKey ? 10 : 1;
+                val += e.key === 'ArrowUp' ? step : -step;
+                exactInput.value = val;
+                processValue(val, 'input');
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (document.activeElement !== exactInput && e.key.toLowerCase() === 's') {
+                swapBtn.click();
+            }
+        });
+
+        chips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                processValue(chip.getAttribute('data-val'), 'chip');
+            });
+        });
+
+        copyBtn.addEventListener('click', () => {
+            if (currentResultNum !== null) {
+                const text = `${currentResultNum} ${rightUnit.textContent}`;
+                navigator.clipboard.writeText(text);
+                const orig = copyBtn.textContent;
+                copyBtn.textContent = 'Copied!';
+                setTimeout(() => copyBtn.textContent = orig, 1500);
+            }
+        });
+
+        function scheduleHistorySave(input, result, dir) {
+            clearTimeout(historyTimeout);
+            historyTimeout = setTimeout(() => {
+                if (history.length > 0 && history[0].input == input && history[0].dir == dir) return;
+                history.unshift({input, result, dir});
+                if (history.length > 5) history.pop();
+                renderHistory();
+            }, 900);
+        }
+
+        function renderHistory() {
+            if (history.length === 0) {
+                historyList.innerHTML = '<li class="history-empty" id="historyEmpty">Nothing yet. Type a value to start.</li>';
+                clearBtn.style.display = 'none';
+                return;
+            }
+            historyList.innerHTML = '';
+            history.forEach(item => {
+                const li = document.createElement('li');
+                const btn = document.createElement('button');
+                btn.className = 'history-chip';
+                const fromU = item.dir === 'CtoF' ? '°C' : '°F';
+                const toU = item.dir === 'CtoF' ? '°F' : '°C';
+                btn.textContent = `${item.input} ${fromU} = ${item.result} ${toU}`;
+                btn.addEventListener('click', () => {
+                    if (currentDir !== item.dir) setDirection(item.dir, true);
+                    exactInput.value = item.input;
+                    processValue(item.input, 'history');
+                });
+                li.appendChild(btn);
+                historyList.appendChild(li);
+            });
+            clearBtn.style.display = 'block';
+        }
+
+        clearBtn.addEventListener('click', () => {
+            history = [];
+            renderHistory();
+        });
+
+        const testCases = [
+            { input: 0, dir: 'CtoF', expected: 32.0 },
+            { input: 100, dir: 'CtoF', expected: 212.0 },
+            { input: -40, dir: 'CtoF', expected: -40.0 },
+            { input: 37, dir: 'CtoF', expected: 98.6 },
+            { input: 36.6, dir: 'CtoF', expected: 97.88 },
+            { input: -273.15, dir: 'CtoF', expected: -459.67 },
+            { input: 32, dir: 'FtoC', expected: 0.0 },
+            { input: 212, dir: 'FtoC', expected: 100.0 },
+            { input: -40, dir: 'FtoC', expected: -40.0 },
+            { input: 98.6, dir: 'FtoC', expected: 37.0 },
+            { input: -459.67, dir: 'FtoC', expected: -273.15 },
+            { input: -274, dir: 'CtoF', expectError: true },
+            { input: -460, dir: 'FtoC', expectError: true },
+            { input: "1e5", dir: 'CtoF', expectError: true },
+            { input: "abc", dir: 'CtoF', expectError: true },
+            { input: "", dir: 'FtoC', expectError: true }
+        ];
+
+        runTestsBtn.addEventListener('click', () => {
+            testDialog.showModal();
+            testsTableBody.innerHTML = '';
+            let passed = 0;
+
+            testCases.forEach(tc => {
+                const tr = document.createElement('tr');
+                let actual = null;
+                let isPass = false;
+                let expectedText = tc.expectError ? "Error" : tc.expected;
+                
+                try {
+                    if (tc.dir === 'CtoF') actual = celsiusToFahrenheit(tc.input);
+                    else actual = fahrenheitToCelsius(tc.input);
+                    
+                    if (tc.expectError) isPass = false;
+                    else if (actual === tc.expected) isPass = true;
+                } catch (e) {
+                    actual = "Error";
+                    if (tc.expectError) isPass = true;
+                }
+
+                if (isPass) passed++;
+
+                tr.innerHTML = `
+                    <td>'${tc.input}'</td>
+                    <td>${tc.dir}</td>
+                    <td>${expectedText}</td>
+                    <td>${actual}</td>
+                    <td class="${isPass ? 'pass' : 'fail'}">${isPass ? 'PASS' : 'FAIL'}</td>
+                `;
+                testsTableBody.appendChild(tr);
+            });
+
+            testsSummary.textContent = `${passed} of ${testCases.length} tests passed.`;
+            testsSummary.style.color = passed === testCases.length ? '#10b981' : '#ef4444';
+        });
+
+        closeDialogBtn.addEventListener('click', () => {
+            testDialog.close();
+        });
+
+        // Init
+        exactInput.value = 0;
+        processValue(0, 'init');
+    </script>
+</body>
+</html>

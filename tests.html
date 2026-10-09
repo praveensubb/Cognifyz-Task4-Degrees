@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ThermoSwitch JS Tests</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 20px; line-height: 1.6; }
+        h1 { margin-bottom: 5px; }
+        .summary { margin-bottom: 20px; font-weight: bold; }
+        table { border-collapse: collapse; width: 100%; max-width: 800px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .pass { color: green; font-weight: bold; }
+        .fail { color: red; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>ThermoSwitch JavaScript Tests</h1>
+    <div class="summary" id="summary">Running tests...</div>
+    <table>
+        <thead>
+            <tr>
+                <th>Test Case</th>
+                <th>Expected</th>
+                <th>Actual</th>
+                <th>Result</th>
+            </tr>
+        </thead>
+        <tbody id="results">
+        </tbody>
+    </table>
+
+    <script>
+        // Shared Logic (Mocked here to match index.html implementation)
+        function validateTemperature(value, scale) {
+            let num = typeof value === 'string' ? parseFloat(value.trim()) : Number(value);
+            if (isNaN(num) || !isFinite(num) || (typeof value === 'string' && value.trim() === '')) {
+                throw new Error("Invalid input: Please enter a finite numeric value.");
+            }
+            if (scale === 'C' && num < -273.15) {
+                throw new Error("Temperature cannot be below absolute zero (-273.15 C).");
+            }
+            if (scale === 'F' && num < -459.67) {
+                throw new Error("Temperature cannot be below absolute zero (-459.67 F).");
+            }
+            return num;
+        }
+
+        function celsiusToFahrenheit(c) {
+            let cVal = validateTemperature(c, 'C');
+            return Math.round((cVal * 9 / 5 + 32) * 100) / 100;
+        }
+
+        function fahrenheitToCelsius(f) {
+            let fVal = validateTemperature(f, 'F');
+            return Math.round(((fVal - 32) * 5 / 9) * 100) / 100;
+        }
+
+        const tests = [
+            { name: "0 C to F", fn: () => celsiusToFahrenheit(0), expected: 32.0 },
+            { name: "100 C to F", fn: () => celsiusToFahrenheit(100), expected: 212.0 },
+            { name: "-40 C to F", fn: () => celsiusToFahrenheit(-40), expected: -40.0 },
+            { name: "37 C to F", fn: () => celsiusToFahrenheit(37), expected: 98.6 },
+            { name: "32 F to C", fn: () => fahrenheitToCelsius(32), expected: 0.0 },
+            { name: "212 F to C", fn: () => fahrenheitToCelsius(212), expected: 100.0 },
+            { name: "-40 F to C", fn: () => fahrenheitToCelsius(-40), expected: -40.0 },
+            { name: "98.6 F to C", fn: () => fahrenheitToCelsius(98.6), expected: 37.0 },
+            { name: "Absolute zero C to F", fn: () => celsiusToFahrenheit(-273.15), expected: -459.67 },
+            { name: "Absolute zero F to C", fn: () => fahrenheitToCelsius(-459.67), expected: -273.15 },
+            { name: "Parse valid string +37", fn: () => celsiusToFahrenheit(" +37 "), expected: 98.6 },
+            { name: "Below absolute zero C (Exception)", fn: () => celsiusToFahrenheit(-274), expectError: "Temperature cannot be below absolute zero (-273.15 C)." },
+            { name: "Below absolute zero F (Exception)", fn: () => fahrenheitToCelsius(-460), expectError: "Temperature cannot be below absolute zero (-459.67 F)." },
+            { name: "Invalid string (Exception)", fn: () => celsiusToFahrenheit("abc"), expectError: "Invalid input: Please enter a finite numeric value." },
+            { name: "Empty string (Exception)", fn: () => celsiusToFahrenheit(""), expectError: "Invalid input: Please enter a finite numeric value." },
+            { name: "NaN (Exception)", fn: () => celsiusToFahrenheit(NaN), expectError: "Invalid input: Please enter a finite numeric value." },
+            { name: "Infinity (Exception)", fn: () => celsiusToFahrenheit(Infinity), expectError: "Invalid input: Please enter a finite numeric value." }
+        ];
+
+        let passed = 0;
+        let failed = 0;
+        const tbody = document.getElementById('results');
+
+        tests.forEach(test => {
+            const tr = document.createElement('tr');
+            let actual, resultHTML;
+            try {
+                actual = test.fn();
+                if (test.expectError) {
+                    actual = "Did not throw";
+                    resultHTML = '<span class="fail">FAIL</span>';
+                    failed++;
+                } else if (actual === test.expected) {
+                    resultHTML = '<span class="pass">PASS</span>';
+                    passed++;
+                } else {
+                    resultHTML = '<span class="fail">FAIL</span>';
+                    failed++;
+                }
+            } catch (e) {
+                actual = e.message;
+                if (test.expectError && actual === test.expectError) {
+                    resultHTML = '<span class="pass">PASS</span>';
+                    passed++;
+                } else {
+                    resultHTML = '<span class="fail">FAIL</span>';
+                    failed++;
+                }
+            }
+
+            tr.innerHTML = `
+                <td>${test.name}</td>
+                <td>${test.expectError ? "Error: " + test.expectError : test.expected}</td>
+                <td>${test.expectError && !String(actual).startsWith("Error:") ? "Error: " + actual : actual}</td>
+                <td>${resultHTML}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        document.getElementById('summary').textContent = `${passed} passed, ${failed} failed out of ${tests.length} tests.`;
+        if (failed > 0) {
+            document.getElementById('summary').style.color = 'red';
+        } else {
+            document.getElementById('summary').style.color = 'green';
+        }
+    </script>
+</body>
+</html>
